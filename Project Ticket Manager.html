@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Progress Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            /*background-color: #f3f4f6;  Saved to restore the background colour */ 
+            background: radial-gradient(circle, #ffffff, rgb(39, 201, 255), #1e5981);
+            display: flex;
+            justify-content: center;
+            padding-top: 20px;
+        }
+        #card-container {
+            width: 800px;
+        }
+        .card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            box-shadow: 0 4px 8px rgba(27, 21, 69, 0.2);
+            margin: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background 0.8s ease;
+        }
+        .status-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-right: 10px;
+        }
+        .status-button {
+            width: 60px;
+            height: 37px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: transform 0.2s ease;
+        }
+        .status-button:active {
+            transform: scale(0.95);
+        }
+        .top-section {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        .toolbar {
+            display: flex;
+            margin-right: 10px;
+        }
+        .toolbar button {
+            margin-right: 5px;
+            padding: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .notepad input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .notes {
+            width: 93%;
+            padding: 10px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: none;
+            flex-grow: 1;
+            min-height: 150px;
+            min-width: 88%;
+            background: white;
+        }
+        .date-created {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .delete-button {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #424242;
+            transition: color 0.3s ease;
+        }
+        .delete-button:hover {
+            color: #f00;
+        }
+        .status-red {
+            background: linear-gradient(to bottom right, red, white);
+        }
+        .status-purple {
+            background: linear-gradient(to bottom right, #a446d4, white);
+        }
+        .status-yellow {
+            background: linear-gradient(to bottom right, #f5d42f, white);
+        }
+        .status-green {
+            background: linear-gradient(to bottom right, green, white);
+        }
+        .card-content {
+            display: flex;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="card-container"></div>
+    <button onclick="addCard()">Add New Card</button>
+    <script>
+        const cardContainer = document.getElementById('card-container');
+
+        // Statuses object containing different states a card can be in
+        const statuses = {
+            notStarted: { color: 'red', label: 'Not Started', className: 'status-red' },
+            planning: { color: '#a446d4', label: 'Planning', className: 'status-purple' },
+            organised: { color: '#f5d42f', label: 'Organised', className: 'status-yellow' },
+            completed: { color: 'green', label: 'Completed', className: 'status-green' }
+        };
+
+        // Function to add a new project card
+        function addCard() {
+            const card = document.createElement('div');
+            card.classList.add('card');
+
+            // Status Section (buttons to select status of the project)
+            const statusSection = document.createElement('div');
+            statusSection.classList.add('status-section');
+
+            // Loop through each status and create a button for it
+            for (let key in statuses) {
+                const btn = document.createElement('button');
+                btn.classList.add('status-button');
+                btn.style.backgroundColor = statuses[key].color;
+                btn.onclick = () => {
+                    // Set the card's class to represent the selected status
+                    card.className = 'card ' + statuses[key].className;
+                    saveState();
+                };
+                statusSection.appendChild(btn);
+            }
+
+            // Top Section (contains toolbar, title, and delete button)
+            const topSection = document.createElement('div');
+            topSection.classList.add('top-section');
+
+            // Toolbar for text formatting (bold, italic, underline, strikethrough, dot point, checkbox, move up, move down)
+            const toolbar = document.createElement('div');
+            toolbar.classList.add('toolbar');
+
+            const moveUpButton = document.createElement('button');
+            moveUpButton.innerHTML = '&#8593;';
+            moveUpButton.onclick = () => moveCard(card, -1);
+            toolbar.appendChild(moveUpButton);
+
+            const moveDownButton = document.createElement('button');
+            moveDownButton.innerHTML = '&#8595;';
+            moveDownButton.onclick = () => moveCard(card, 1);
+            toolbar.appendChild(moveDownButton);
+
+            const boldButton = document.createElement('button');
+            boldButton.innerHTML = '<b>B</b>';
+            boldButton.onclick = () => document.execCommand('bold');
+            toolbar.appendChild(boldButton);
+
+            const italicButton = document.createElement('button');
+            italicButton.innerHTML = '<i>I</i>';
+            italicButton.onclick = () => document.execCommand('italic');
+            toolbar.appendChild(italicButton);
+
+            const underlineButton = document.createElement('button');
+            underlineButton.innerHTML = '<u>U</u>';
+            underlineButton.onclick = () => document.execCommand('underline');
+            toolbar.appendChild(underlineButton);
+
+            const strikeThroughButton = document.createElement('button');
+            strikeThroughButton.innerHTML = '<s>S</s>';
+            strikeThroughButton.onclick = () => document.execCommand('strikeThrough');
+            toolbar.appendChild(strikeThroughButton);
+
+            const dotPointButton = document.createElement('button');
+            dotPointButton.innerHTML = '&middot;';
+            dotPointButton.onclick = () => document.execCommand('insertText', false, '· ');
+            toolbar.appendChild(dotPointButton);
+
+            const checkboxButton = document.createElement('button');
+            checkboxButton.innerHTML = '&#9744;';
+            checkboxButton.onclick = () => {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.style.marginRight = '5px';
+                document.execCommand('insertHTML', false, checkbox.outerHTML);
+            };
+            toolbar.appendChild(checkboxButton);
+
+            // Title input field for the project card
+            const title = document.createElement('input');
+            title.type = 'text';
+            title.placeholder = 'Project Title';
+            title.style.width = '100%';
+            title.style.fontSize = '16px';
+            title.style.fontWeight = 'bold';
+            title.oninput = saveState;
+
+            // Delete button for removing the card
+            const deleteButton = document.createElement('button');
+            deleteButton.classList.add('delete-button');
+            deleteButton.innerHTML = '<i class="fas fa-times"></i>';
+            deleteButton.onclick = () => {
+                if (confirm('Are you sure you want to delete this card?')) {
+                    card.remove();
+                    saveState();
+                }
+            };
+
+            // Append toolbar, title, and delete button to the top section
+            topSection.appendChild(toolbar);
+            topSection.appendChild(title);
+            topSection.appendChild(deleteButton);
+
+            // Main Text Area for project notes
+            const notes = document.createElement('div');
+            notes.contentEditable = true;
+            notes.classList.add('notes');
+            notes.placeholder = 'Enter your notes here...';
+            notes.oninput = saveState;
+
+            // Card Content Section (contains status buttons and main text area)
+            const cardContent = document.createElement('div');
+            cardContent.classList.add('card-content');
+            cardContent.appendChild(statusSection);
+            cardContent.appendChild(notes);
+
+            // Date Created section to display when the card was created
+            const dateCreated = document.createElement('div');
+            dateCreated.classList.add('date-created');
+            const creationTime = new Date();
+            const currentDate = creationTime.toLocaleString();
+            dateCreated.dataset.creationTime = creationTime.getTime(); // Store the creation timestamp
+            dateCreated.dataset.lastSavedTime = creationTime.getTime(); // Initialize last saved time to creation time
+            dateCreated.innerText = `Date created: ${currentDate} || Last saved: ${currentDate} || Elapsed: 0 Minutes`;
+
+            // Append all sections to the card
+            card.appendChild(topSection);r
+            card.appendChild(cardContent);
+            card.appendChild(dateCreated);
+
+            // Append the card to the container
+            cardContainer.appendChild(card);
+            saveState();
+        }
+
+        // Function to move the card up or down
+        function moveCard(card, direction) {
+            const sibling = direction === -1 ? card.previousElementSibling : card.nextElementSibling;
+            if (sibling && sibling.classList.contains('card')) {
+                cardContainer.insertBefore(card, direction === -1 ? sibling : sibling.nextElementSibling);
+                saveState();
+            }
+        }
+
+        // Function to save the current state of the project cards
+        function saveState() {
+            const now = new Date();
+            const cards = [];
+            // Iterate through each card and save its data (title, notes, status, date created)
+            cardContainer.childNodes.forEach(card => {
+                const dateCreatedElement = card.querySelector('.date-created');
+                const creationTime = new Date(parseInt(dateCreatedElement.dataset.creationTime));
+                const lastSavedTime = now;
+                dateCreatedElement.dataset.lastSavedTime = lastSavedTime.getTime(); // Update the last saved timestamp
+                const elapsedTime = calculateElapsedTime(creationTime, lastSavedTime);
+                dateCreatedElement.innerText = `Created: ${creationTime.toLocaleString()} | Modified: ${lastSavedTime.toLocaleString()} | Elapsed: ${elapsedTime}`;
+                const title = card.querySelector('input[type="text"]').value;
+                const notes = card.querySelector('.notes').innerHTML;
+                const bgColor = card.className;
+                cards.push({ title, notes, bgColor, creationTime: creationTime.getTime(), lastSavedTime: lastSavedTime.getTime() });
+            });
+            // Store the cards data in localStorage for persistence
+            localStorage.setItem('cards', JSON.stringify(cards));
+        }
+
+        // Function to load the saved state of the project cards from localStorage
+        function loadState() {
+            const cards = JSON.parse(localStorage.getItem('cards')) || [];
+            cards.forEach(({ title, notes, bgColor, creationTime, lastSavedTime }) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+
+                // Status Section (buttons to select status of the project)
+                const statusSection = document.createElement('div');
+                statusSection.classList.add('status-section');
+
+                for (let key in statuses) {
+                    const btn = document.createElement('button');
+                    btn.classList.add('status-button');
+                    btn.style.backgroundColor = statuses[key].color;
+                    btn.onclick = () => {
+                        card.className = 'card ' + statuses[key].className;
+                        saveState();
+                    };
+                    statusSection.appendChild(btn);
+                }
+
+                // Top Section (contains toolbar, title, and delete button)
+                const topSection = document.createElement('div');
+                topSection.classList.add('top-section');
+
+                // Toolbar for text formatting (bold, italic, underline, strikethrough, dot point, checkbox, move up, move down)
+                const toolbar = document.createElement('div');
+                toolbar.classList.add('toolbar');
+
+                const moveUpButton = document.createElement('button');
+                moveUpButton.innerHTML = '&#8593;';
+                moveUpButton.onclick = () => moveCard(card, -1);
+                toolbar.appendChild(moveUpButton);
+
+                const moveDownButton = document.createElement('button');
+                moveDownButton.innerHTML = '&#8595;';
+                moveDownButton.onclick = () => moveCard(card, 1);
+                toolbar.appendChild(moveDownButton);
+
+                const boldButton = document.createElement('button');
+                boldButton.innerHTML = '<b>B</b>';
+                boldButton.onclick = () => document.execCommand('bold');
+                toolbar.appendChild(boldButton);
+
+                const italicButton = document.createElement('button');
+                italicButton.innerHTML = '<i>I</i>';
+                italicButton.onclick = () => document.execCommand('italic');
+                toolbar.appendChild(italicButton);
+
+                const underlineButton = document.createElement('button');
+                underlineButton.innerHTML = '<u>U</u>';
+                underlineButton.onclick = () => document.execCommand('underline');
+                toolbar.appendChild(underlineButton);
+
+                const strikeThroughButton = document.createElement('button');
+                strikeThroughButton.innerHTML = '<s>S</s>';
+                strikeThroughButton.onclick = () => document.execCommand('strikeThrough');
+                toolbar.appendChild(strikeThroughButton);
+
+                const dotPointButton = document.createElement('button');
+                dotPointButton.innerHTML = '&middot;';
+                dotPointButton.onclick = () => document.execCommand('insertText', false, '· ');
+                toolbar.appendChild(dotPointButton);
+
+                const checkboxButton = document.createElement('button');
+                checkboxButton.innerHTML = '&#9744;';
+                checkboxButton.onclick = () => {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.style.marginRight = '5px';
+                    document.execCommand('insertHTML', false, checkbox.outerHTML);
+                };
+                toolbar.appendChild(checkboxButton);
+
+                // Title input field for the project card
+                const titleInput = document.createElement('input');
+                titleInput.type = 'text';
+                titleInput.value = title;
+                titleInput.style.width = '100%';
+                titleInput.style.fontSize = '16px';
+                titleInput.style.fontWeight = 'bold';
+                titleInput.oninput = saveState;
+
+                // Delete button for removing the card
+                const deleteButton = document.createElement('button');
+                deleteButton.classList.add('delete-button');
+                deleteButton.innerHTML = '<i class="fas fa-times"></i>';
+                deleteButton.onclick = () => {
+                    if (confirm('Are you sure you want to delete this card?')) {
+                        card.remove();
+                        saveState();
+                    }
+                };
+
+                // Append toolbar, title, and delete button to the top section
+                topSection.appendChild(toolbar);
+                topSection.appendChild(titleInput);
+                topSection.appendChild(deleteButton);
+
+                // Main Text Area for project notes
+                const notesDiv = document.createElement('div');
+                notesDiv.contentEditable = true;
+                notesDiv.classList.add('notes');
+                notesDiv.innerHTML = notes;
+                notesDiv.oninput = saveState;
+
+                // Card Content Section (contains status buttons and main text area)
+                const cardContent = document.createElement('div');
+                cardContent.classList.add('card-content');
+                cardContent.appendChild(statusSection);
+                cardContent.appendChild(notesDiv);
+
+                // Date Created section to display when the card was created
+                const dateCreatedDiv = document.createElement('div');
+                dateCreatedDiv.classList.add('date-created');
+                const creationTimeObj = new Date(parseInt(creationTime));
+                const lastSavedTimeObj = new Date(parseInt(lastSavedTime));
+                dateCreatedDiv.dataset.creationTime = creationTimeObj.getTime();
+                dateCreatedDiv.dataset.lastSavedTime = lastSavedTimeObj.getTime();
+                const elapsedTime = calculateElapsedTime(creationTimeObj, lastSavedTimeObj);
+                dateCreatedDiv.innerText = `Date created: ${creationTimeObj.toLocaleString()} | Last saved: ${lastSavedTimeObj.toLocaleString()} | Elapsed: ${elapsedTime}`;
+
+                // Append all sections to the card
+                card.appendChild(topSection);
+                card.appendChild(cardContent);
+                card.appendChild(dateCreatedDiv);
+
+                // Append the card to the container
+                cardContainer.appendChild(card);
+            });
+        }
+
+        // Function to calculate elapsed time between two dates
+        function calculateElapsedTime(start, end) {
+            let diff = end - start;
+            const msInMinute = 60 * 1000;
+            const msInHour = 60 * msInMinute;
+            const msInDay = 24 * msInHour;
+
+            const days = Math.floor(diff / msInDay);
+            diff %= msInDay;
+            const hours = Math.floor(diff / msInHour);
+            diff %= msInHour;
+            const minutes = Math.floor(diff / msInMinute);
+
+            return `${days} Days, ${hours} Hours, ${minutes} Minutes`;
+        }
+
+        // Load the saved state when the page is loaded
+        loadState();
+    </script>
+</body>
+</html>
